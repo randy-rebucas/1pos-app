@@ -1,50 +1,64 @@
-# Welcome to your Expo app 👋
+# 1POS Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Mobile POS companion for **retail stores and general businesses**. Built with [Expo](https://expo.dev) and [Expo Router](https://docs.expo.dev/router/introduction/).
 
-## Get started
+API reference: [`mobile-api-endpoints.md`](./mobile-api-endpoints.md)
 
-1. Install dependencies
+## Flow
+
+1. **Select store** — `GET /api/stores/retail` or enter store slug manually
+2. **Sign in** — email + password via `POST /api/auth/mobile-login` (JWT in response body)
+3. **Scan products** — bulk scan session + `PATCH /api/products/:id/scan-update`
+
+| Screen | Purpose |
+| --- | --- |
+| Store select | Search and pick a retail store branch |
+| Login | Email + password staff sign-in |
+| Product scanner | Barcode/QR bulk edit with image upload |
+| POS home | Quick access to scan and change store |
+
+## Setup
+
+1. Install dependencies: `npm install`
+
+2. Create `.env`:
 
    ```bash
-   npm install
+   EXPO_PUBLIC_API_URL=http://localhost:3000
+   # Optional — defaults to /api
+   # EXPO_PUBLIC_API_PATH_PREFIX=/api
    ```
 
-2. Start the app
+3. Start: `npm start`
 
-   ```bash
-   npx expo start
-   ```
+## Navigation
 
-In the output, you'll find options to open the app in a
+| Route | Description |
+| --- | --- |
+| `/` | Store selection |
+| `/(staff)/login` | Staff sign-in |
+| `/(staff)/bulk-scan-select` | Scan session setup |
+| `/(staff)/bulk-scan-session` | Active scanning |
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Project structure
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+app/(staff)/           # POS screens
+components/ui/         # Shared UI
+components/scan/       # Scanner UI
+lib/api/               # staff-api, scan-api, upload-api, client
+lib/context/           # Staff session + tenant providers
+hooks/                 # use-staff-scan-headers
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Scripts
 
-## Learn more
+| Command | Description |
+| --- | --- |
+| `npm start` | Start Expo dev server |
+| `npm run lint` | Run ESLint |
 
-To learn more about developing your project with Expo, look at the following resources:
+## Related docs
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [`mobile-api-endpoints.md`](./mobile-api-endpoints.md) — backend contract
+- [Expo documentation](https://docs.expo.dev/)

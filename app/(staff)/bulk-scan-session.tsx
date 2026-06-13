@@ -8,22 +8,24 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Screen, useScreenKeyboardOffset } from "@/components/ui/screen";
 import { StatsBar } from "@/components/scan/StatsBar";
 import { ScannerPanel } from "@/components/scan/ScannerPanel";
-import { ProductForm, type ProductFormValues } from "@/components/scan/ProductForm";
+import { ProductForm, type ProductFormHandle, type ProductFormValues } from "@/components/scan/ProductForm";
 import { ActionBar } from "@/components/scan/ActionBar";
 import { colors } from "@/lib/theme";
-import { useApiHeaders } from "@/hooks/use-api-headers";
+import { useStaffScanHeaders } from "@/hooks/use-staff-scan-headers";
 import {
   fetchScanSession,
-  fetchProduct,
+  fetchProductsList,
   lookupByBarcode,
   scanUpdateProduct,
   logScanSession,
   fetchCategories,
+  indexProductsById,
 } from "@/lib/api/scan-api";
 import type { ProductData } from "@/lib/api/scan-api";
+import { uploadProductImage } from "@/lib/api/upload-api";
 import {
   loadSession,
   saveSession,
@@ -62,9 +64,12 @@ export default function BulkScanSessionScreen() {
   const params = useLocalSearchParams<{ mode: string; filter: string }>();
   const mode = (params.mode ?? "barcode") as ScanMode;
   const filter = (params.filter ?? "all") as SessionFilter;
+  const keyboardOffset = useScreenKeyboardOffset();
 
-  const headers = useApiHeaders();
-  const sessionIdRef = useRef<string>(makeSessionId());
+  const headers = useStaffScanHeaders();
+  const sessionIdRef = useRef<string>("");
+  const productMapRef = useRef<Map<string, ProductData>>(new Map());
+  const formRef = useRef<ProductFormHandle>(null);
 
   const [productIds, setProductIds] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -72,7 +77,6 @@ export default function BulkScanSessionScreen() {
   const [stats, setStats] = useState<ScanSessionStats>({ done: 0, skipped: 0, errors: 0 });
   const [formValues, setFormValues] = useState<ProductFormValues>(EMPTY_FORM);
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
-  const [scanPaused, setScanPaused] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,12 +103,14 @@ export default function BulkScanSessionScreen() {
           );
         });
         if (resume) {
+          const products = await fetchProductsList(headers, filter);
+          productMapRef.current = indexProductsById(products);
           setProductIds(persisted.productIds);
           setCurrentIndex(persisted.currentIndex);
           setTotal(persisted.total);
           setStats(persisted.stats);
-          sessionIdRef.current = persisted.sessionId;
-          await loadCurrentProduct(persisted.productIds, persisted.currentIndex);
+          sessionIdRef.current = persisted.sessionId?.trim() || makeSessionId();
+          loadCurrentProduct(persisted.productIds, persisted.currentIndex);
           setLoading(false);
           return;
         }
@@ -117,14 +123,18 @@ export default function BulkScanSessionScreen() {
   }
 
   async function startNewSession() {
-    const data = await fetchScanSession(headers, filter);
+    const [data, products] = await Promise.all([
+      fetchScanSession(headers, filter),
+      fetchProductsList(headers, filter),
+    ]);
+    productMapRef.current = indexProductsById(products);
     setProductIds(data.productIds);
     setTotal(data.total);
     setCurrentIndex(0);
     setStats({ done: 0, skipped: 0, errors: 0 });
-    sessionIdRef.current = makeSessionId();
+    sessionIdRef.current = data.sessionId || makeSessionId();
     await saveSession({
-      sessionId: sessionIdRef.current,
+      sessionId: data.sessionId,
       scanMode: mode,
       filter,
       productIds: data.productIds,
@@ -134,7 +144,7 @@ export default function BulkScanSessionScreen() {
       startedAt: new Date().toISOString(),
     });
     if (data.productIds.length > 0) {
-      await loadCurrentProduct(data.productIds, 0);
+      loadCurrentProduct(data.productIds, 0);
     }
     setLoading(false);
   }
@@ -148,24 +158,26 @@ export default function BulkScanSessionScreen() {
     }
   }
 
-  async function loadCurrentProduct(ids: string[], index: number) {
+  function loadCurrentProduct(ids: string[], index: number) {
     if (index >= ids.length) return;
-    try {
-      const product = await fetchProduct(headers, ids[index]);
-      setFormValues(productToForm(product));
-      setScanPaused(false);
-    } catch {
-      setFormValues(EMPTY_FORM);
+    const product = productMapRef.current.get(ids[index]);
+    setFormValues(product ? productToForm(product) : EMPTY_FORM);
+  }
+
+  async function handleImageUpload(uri: string): Promise<string> {
+    if (uri.startsWith("http://") || uri.startsWith("https://")) {
+      return uri;
     }
+    return uploadProductImage(headers, uri);
   }
 
   function handleScanned(code: string) {
-    setScanPaused(true);
     setFormValues((prev) => ({ ...prev, barcode: code }));
-    // Try to look up existing product by barcode — auto-fill if found
+    formRef.current?.focusBarcode();
     void lookupByBarcode(headers, code).then((found) => {
       if (found) {
-        setFormValues(productToForm({ ...found }));
+        setFormValues(productToForm({ ...found, barcode: code }));
+        formRef.current?.focusBarcode();
       }
     });
   }
@@ -178,7 +190,11 @@ export default function BulkScanSessionScreen() {
     async (newStats: ScanSessionStats, newIndex: number, ids: string[]) => {
       if (newIndex >= ids.length) {
         await clearSession();
-        await logScanSession(headers, sessionIdRef.current, newStats);
+        try {
+          await logScanSession(headers, sessionIdRef.current, newStats);
+        } catch {
+          // Audit log is best-effort; don't block completion.
+        }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         router.replace({ pathname: "/(staff)/bulk-scan-done" as any, params: { done: String(newStats.done), skipped: String(newStats.skipped), errors: String(newStats.errors), total: String(ids.length) } });
         return;
@@ -208,6 +224,14 @@ export default function BulkScanSessionScreen() {
     setSaving(true);
     const id = productIds[currentIndex];
     try {
+      let image = formValues.imageUri || undefined;
+      if (
+        image &&
+        !image.startsWith("http://") &&
+        !image.startsWith("https://")
+      ) {
+        image = await uploadProductImage(headers, image);
+      }
       await scanUpdateProduct(headers, id, {
         barcode: formValues.barcode || undefined,
         name: formValues.name.trim(),
@@ -215,7 +239,7 @@ export default function BulkScanSessionScreen() {
         price: formValues.price ? parseFloat(formValues.price) : undefined,
         stock: formValues.stock ? parseInt(formValues.stock, 10) : undefined,
         categoryId: formValues.categoryId || undefined,
-        imageUrl: formValues.imageUri || undefined,
+        image,
         notes: formValues.notes || undefined,
         sessionId: sessionIdRef.current,
       });
@@ -245,7 +269,11 @@ export default function BulkScanSessionScreen() {
         style: "destructive",
         onPress: async () => {
           await clearSession();
-          await logScanSession(headers, sessionIdRef.current, stats);
+          try {
+            await logScanSession(headers, sessionIdRef.current, stats);
+          } catch {
+            // Audit log is best-effort; don't block completion.
+          }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           router.replace({ pathname: "/(staff)/bulk-scan-done" as any, params: { done: String(stats.done), skipped: String(stats.skipped), errors: String(stats.errors), total: String(total) } });
         },
@@ -255,45 +283,49 @@ export default function BulkScanSessionScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.centered}>
+      <Screen contentStyle={styles.centered}>
         <Text style={styles.loadingText}>Loading products…</Text>
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.centered}>
+      <Screen contentStyle={styles.centered}>
         <Text style={styles.errorText}>{error}</Text>
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   if (total === 0) {
     return (
-      <SafeAreaView style={styles.centered}>
+      <Screen contentStyle={styles.centered}>
         <Text style={styles.emptyText}>No products match the selected filter.</Text>
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   const isLast = currentIndex === productIds.length - 1;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <Screen>
       <StatsBar stats={stats} currentIndex={currentIndex} total={total} />
-      <ScannerPanel mode={mode} onScanned={handleScanned} paused={scanPaused} />
+      <ScannerPanel mode={mode} onScanned={handleScanned} active={!saving} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={keyboardOffset}
       >
         <View style={styles.formHeader}>
           <Text style={styles.formHeaderText}>Product {currentIndex + 1} of {total}</Text>
         </View>
         <ProductForm
+          ref={formRef}
           values={formValues}
           onChange={handleFieldChange}
           categories={categories}
+          onImageUpload={handleImageUpload}
+          barcodeFocusKey={currentIndex}
         />
         <ActionBar
           onSkip={handleSkip}
@@ -303,12 +335,11 @@ export default function BulkScanSessionScreen() {
           isLast={isLast}
         />
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   centered: {
     flex: 1,

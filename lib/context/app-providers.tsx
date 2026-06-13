@@ -1,17 +1,11 @@
 import type { ReactNode } from "react";
 import { TenantProvider } from "@/lib/context/tenant-context";
-import { SessionProvider } from "@/lib/context/session-context";
-import { CatalogProvider } from "@/lib/context/catalog-context";
-import { OrdersProvider } from "@/lib/context/orders-context";
+import { StaffScanProvider } from "@/lib/context/staff-scan-context";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <TenantProvider>
-      <SessionProvider>
-        <CatalogProvider>
-          <OrdersProvider>{children}</OrdersProvider>
-        </CatalogProvider>
-      </SessionProvider>
+      <StaffScanProvider>{children}</StaffScanProvider>
     </TenantProvider>
   );
 }

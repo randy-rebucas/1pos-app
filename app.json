@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "1POS Laundry",
+    "name": "1POS Mobile",
     "slug": "1pos-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "1posapp",
+    "scheme": "oneposapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -52,7 +52,9 @@
           "photosPermission": "Allow 1POS to access your photos to add product images.",
           "cameraPermission": "Allow 1POS to use the camera to take product photos."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,9 +1,11 @@
-import { fetchJson } from "@/lib/api/client";
-import type { ApiRequestHeaders } from "@/lib/api/client";
+import { fetchJson, type ApiRequestHeaders } from "@/lib/api/client";
+import { makeSessionId } from "@/lib/context/scan-session-store";
 
 export interface ScanSessionData {
+  sessionId: string;
   total: number;
   productIds: string[];
+  filter?: string;
 }
 
 export interface ProductData {
@@ -25,9 +27,9 @@ export interface ScanUpdatePayload {
   price?: number;
   stock?: number;
   categoryId?: string;
-  imageUrl?: string;
+  image?: string;
   notes?: string;
-  sessionId?: string;
+  sessionId: string;
 }
 
 export interface ScanUpdateResult {
@@ -45,18 +47,35 @@ export async function fetchScanSession(
     `/products/scan-session?filter=${filter}`,
     { headers },
   );
-  return res.data;
+  const data = res.data;
+  // Backend returns product list only; client owns sessionId for audit logging.
+  const sessionId = data.sessionId?.trim() || makeSessionId();
+  return {
+    sessionId,
+    total: data.total ?? data.productIds?.length ?? 0,
+    productIds: data.productIds ?? [],
+    filter: data.filter ?? filter,
+  };
 }
 
-export async function fetchProduct(
+export async function fetchProductsList(
   headers: ApiRequestHeaders,
-  id: string,
-): Promise<ProductData> {
-  const res = await fetchJson<{ success: boolean; data: ProductData }>(
-    `/products/${id}`,
-    { headers },
-  );
-  return res.data as unknown as ProductData;
+  filter: SessionFilter,
+): Promise<ProductData[]> {
+  const all: ProductData[] = [];
+  let page = 1;
+  let pages = 1;
+  do {
+    const res = await fetchJson<{
+      success: boolean;
+      data: ProductData[];
+      pagination?: { pages?: number };
+    }>(`/products?filter=${filter}&page=${page}&limit=100`, { headers });
+    all.push(...(res.data ?? []));
+    pages = res.pagination?.pages ?? 1;
+    page += 1;
+  } while (page <= pages);
+  return all;
 }
 
 export async function lookupByBarcode(
@@ -64,12 +83,14 @@ export async function lookupByBarcode(
   code: string,
 ): Promise<ProductData | null> {
   try {
-    const res = await fetchJson<{ success: boolean; data: { product: ProductData } }>(
-      `/products/by-barcode?code=${encodeURIComponent(code)}`,
-      { headers },
-    );
-    return res.data.product;
-  } catch {
+    const res = await fetchJson<{
+      success: boolean;
+      data: { product: ProductData } | null;
+    }>(`/products/by-barcode?code=${encodeURIComponent(code)}`, { headers });
+    return res.data?.product ?? null;
+  } catch (e) {
+    const err = e as { status?: number };
+    if (err.status === 404) return null;
     return null;
   }
 }
@@ -79,11 +100,15 @@ export async function scanUpdateProduct(
   id: string,
   payload: ScanUpdatePayload,
 ): Promise<ScanUpdateResult> {
+  const { image, ...rest } = payload;
   const res = await fetchJson<{ success: boolean; data: ScanUpdateResult }>(
     `/products/${id}/scan-update`,
     {
       method: "PATCH",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...rest,
+        ...(image !== undefined ? { imageUrl: image } : {}),
+      }),
       headers,
     },
   );
@@ -95,14 +120,11 @@ export async function logScanSession(
   sessionId: string,
   stats: { done: number; skipped: number; errors: number },
 ): Promise<void> {
-  await fetchJson<{ success: boolean }>(
-    `/products/scan-session/log`,
-    {
-      method: "POST",
-      body: JSON.stringify({ sessionId, stats }),
-      headers,
-    },
-  );
+  await fetchJson<{ success: boolean }>(`/products/scan-session/log`, {
+    method: "POST",
+    body: JSON.stringify({ sessionId, stats }),
+    headers,
+  });
 }
 
 export async function fetchCategories(
@@ -113,4 +135,10 @@ export async function fetchCategories(
     data: { _id: string; name: string }[];
   }>("/categories", { headers });
   return res.data ?? [];
+}
+
+export function indexProductsById(
+  products: ProductData[],
+): Map<string, ProductData> {
+  return new Map(products.map((p) => [p._id, p]));
 }

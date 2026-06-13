@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { colors, spacing } from "@/lib/theme";
 import type { ScanMode } from "@/lib/context/scan-session-store";
@@ -8,21 +8,21 @@ import type { ScanMode } from "@/lib/context/scan-session-store";
 interface ScannerPanelProps {
   mode: ScanMode;
   onScanned: (code: string) => void;
-  paused?: boolean;
+  /** When false, ignore scans (e.g. while saving). */
+  active?: boolean;
 }
 
-export function ScannerPanel({ mode, onScanned, paused = false }: ScannerPanelProps) {
-  const [permission, requestPermission] = useCameraPermissions();
-  const [lastCode, setLastCode] = useState<string | null>(null);
-  const cooldownRef = useRef(false);
+const DUPLICATE_MS = 800;
 
-  // Reset cooldown when paused is cleared (user moved to next product)
+export function ScannerPanel({ mode, onScanned, active = true }: ScannerPanelProps) {
+  const [permission, requestPermission] = useCameraPermissions();
+  const lastCaptureRef = useRef<{ code: string; at: number } | null>(null);
+
   useEffect(() => {
-    if (!paused) {
-      cooldownRef.current = false;
-      setLastCode(null);
+    if (active) {
+      lastCaptureRef.current = null;
     }
-  }, [paused]);
+  }, [active]);
 
   if (!permission) {
     return (
@@ -49,35 +49,43 @@ export function ScannerPanel({ mode, onScanned, paused = false }: ScannerPanelPr
       : ["ean13" as const, "ean8" as const, "code128" as const, "code39" as const, "upc_a" as const, "upc_e" as const];
 
   function handleBarcode({ data }: { data: string }) {
-    if (paused || cooldownRef.current || data === lastCode) return;
-    cooldownRef.current = true;
-    setLastCode(data);
+    if (!active) return;
+    const code = data.trim();
+    if (!code) return;
+
+    const now = Date.now();
+    const last = lastCaptureRef.current;
+    if (last && last.code === code && now - last.at < DUPLICATE_MS) {
+      return;
+    }
+
+    lastCaptureRef.current = { code, at: now };
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onScanned(data);
-    // Allow re-scan after 2.5s if still on same product
-    setTimeout(() => { cooldownRef.current = false; }, 2500);
+    onScanned(code);
   }
 
   return (
     <View style={styles.container}>
       <CameraView
-        style={styles.camera}
+        style={StyleSheet.absoluteFillObject}
         facing="back"
+        autofocus="on"
         barcodeScannerSettings={{ barcodeTypes }}
-        onBarcodeScanned={paused ? undefined : handleBarcode}
-      >
-        <View style={styles.overlay}>
-          <View style={styles.reticle}>
-            <Corner pos="tl" />
-            <Corner pos="tr" />
-            <Corner pos="bl" />
-            <Corner pos="br" />
-          </View>
-          <Text style={styles.hint}>
-            {paused ? "Scan captured" : `Point camera at ${mode === "qr" ? "QR code" : "barcode"}`}
-          </Text>
+        onBarcodeScanned={active ? handleBarcode : undefined}
+      />
+      <View style={styles.overlay} pointerEvents="none">
+        <View style={styles.reticle}>
+          <Corner pos="tl" />
+          <Corner pos="tr" />
+          <Corner pos="bl" />
+          <Corner pos="br" />
         </View>
-      </CameraView>
+        <Text style={styles.hint}>
+          {active
+            ? `Align ${mode === "qr" ? "QR code" : "barcode"} in frame — auto capture`
+            : "Processing…"}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -100,7 +108,11 @@ const CORNER = 20;
 const CORNER_W = 3;
 
 const styles = StyleSheet.create({
-  container: { height: 220 },
+  container: {
+    height: 220,
+    overflow: "hidden",
+    backgroundColor: "#000",
+  },
   placeholder: {
     height: 220,
     backgroundColor: "#000",
@@ -108,9 +120,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
   },
-  camera: { flex: 1 },
   overlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.35)",

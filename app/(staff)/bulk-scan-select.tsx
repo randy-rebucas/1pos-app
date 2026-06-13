@@ -7,25 +7,53 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useStaffScan } from "@/lib/context/staff-scan-context";
+import { Screen } from "@/components/ui/screen";
 import { colors, spacing, radius } from "@/lib/theme";
 import type { ScanMode, SessionFilter } from "@/lib/context/scan-session-store";
 
 export default function BulkScanSelectScreen() {
+  const { selectedStore, resetStaffFlow } = useStaffScan();
   const [mode, setMode] = useState<ScanMode>("barcode");
   const [filter, setFilter] = useState<SessionFilter>("missing-barcode");
+  const [changingStore, setChangingStore] = useState(false);
 
   function start() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     router.push({ pathname: "/(staff)/bulk-scan-session" as any, params: { mode, filter } });
   }
 
+  async function handleChangeStore() {
+    setChangingStore(true);
+    try {
+      await resetStaffFlow();
+      router.replace("/(staff)/store-select");
+    } finally {
+      setChangingStore(false);
+    }
+  }
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Bulk Product Editor</Text>
+    <Screen contentStyle={styles.container}>
+        <View style={styles.contextBar}>
+          <View style={styles.contextText}>
+            <Text style={styles.contextLabel}>Store</Text>
+            <Text style={styles.contextValue}>{selectedStore?.name ?? "—"}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.signOutBtn}
+            onPress={() => void handleChangeStore()}
+            disabled={changingStore}
+          >
+            <Text style={styles.signOutText}>
+              {changingStore ? "…" : "Change store"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.title}>Product scanner</Text>
         <Text style={styles.subtitle}>
-          Scan barcodes or QR codes to update products one by one.
+          Scan barcodes or QR codes to update catalog items in your store.
         </Text>
 
         {/* Scan mode */}
@@ -71,10 +99,9 @@ export default function BulkScanSelectScreen() {
 
         <TouchableOpacity style={styles.startBtn} onPress={start}>
           <Ionicons name="scan" size={22} color="#fff" />
-          <Text style={styles.startBtnText}>Start Bulk Edit</Text>
+          <Text style={styles.startBtnText}>Start scanning</Text>
         </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -100,8 +127,47 @@ function ModeCard({ icon, label, desc, active, onPress }: ModeCardProps) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, padding: spacing.lg },
+  contextBar: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  contextText: { flex: 1 },
+  contextLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  contextValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+    marginTop: 2,
+  },
+  contextMeta: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  signOutBtn: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  signOutText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   title: { fontSize: 26, fontWeight: "800", color: colors.text, marginBottom: spacing.xs },
   subtitle: { fontSize: 14, color: colors.textMuted, marginBottom: spacing.lg, lineHeight: 20 },
   sectionLabel: {

@@ -1,51 +1,48 @@
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
-import { useOrders } from "@/lib/context/orders-context";
-import { Card } from "@/components/laundry/card";
-import { PrimaryButton } from "@/components/laundry/primary-button";
+import { useStaffScan } from "@/lib/context/staff-scan-context";
+import { Card } from "@/components/ui/card";
+import { PrimaryButton } from "@/components/ui/primary-button";
+import { Screen } from "@/components/ui/screen";
 import { colors, spacing } from "@/lib/theme";
 
 export default function StaffHomeScreen() {
-  const { orders } = useOrders();
-  const open = orders.filter((o) => o.status !== "completed" && o.status !== "cancelled").length;
-  const revenue = orders.reduce((s, o) => s + o.total, 0);
+  const { selectedStore, resetStaffFlow } = useStaffScan();
+
+  async function handleChangeStore() {
+    await resetStaffFlow();
+    router.replace("/(staff)/store-select");
+  }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.metrics}>
-        <Card style={styles.metric}>
-          <Text style={styles.metricLabel}>Open jobs</Text>
-          <Text style={styles.metricVal}>{open}</Text>
-        </Card>
-        <Card style={styles.metric}>
-          <Text style={styles.metricLabel}>Booked value</Text>
-          <Text style={styles.metricVal}>₱{revenue}</Text>
-        </Card>
-      </View>
-      <Text style={styles.section}>Queues</Text>
-      <Link href="/(staff)/rider" asChild>
-        <PrimaryButton title="Rider · pickups & drops" />
+    <Screen contentStyle={styles.screen}>
+      <Card style={styles.context}>
+        <Text style={styles.contextLabel}>Store</Text>
+        <Text style={styles.contextName}>
+          {selectedStore?.storeName ?? selectedStore?.name ?? "—"}
+        </Text>
+        {selectedStore?.storeName !== selectedStore?.name ? (
+          <Text style={styles.contextBranch}>{selectedStore?.name}</Text>
+        ) : null}
+      </Card>
+
+      <Text style={styles.headline}>Store POS</Text>
+      <Text style={styles.sub}>
+        Scan barcodes to update products, prices, and stock on the floor.
+      </Text>
+
+      <Link href="/(staff)/bulk-scan-select" asChild>
+        <PrimaryButton title="Scan products" />
       </Link>
-      <Link href="/(staff)/plant" asChild>
-        <PrimaryButton
-          title="Plant · production"
-          variant="secondary"
-          style={styles.second}
-        />
-      </Link>
-      <Link href="/(staff)/admin" asChild>
-        <PrimaryButton
-          title="Admin · KPIs & dispatch"
-          variant="secondary"
-          style={styles.second}
-        />
-      </Link>
+
       <View style={styles.footer}>
-        <Link href="/(customer)" asChild>
-          <PrimaryButton title="Open customer app" variant="ghost" />
-        </Link>
+        <PrimaryButton
+          title="Change store"
+          variant="ghost"
+          onPress={() => void handleChangeStore()}
+        />
       </View>
-    </View>
+    </Screen>
   );
 }
 
@@ -55,16 +52,37 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: spacing.md,
   },
-  metrics: { flexDirection: "row", gap: spacing.md, marginBottom: spacing.lg },
-  metric: { flex: 1 },
-  metricLabel: { fontSize: 12, color: colors.textMuted, fontWeight: "600" },
-  metricVal: { fontSize: 22, fontWeight: "800", color: colors.text, marginTop: spacing.sm },
-  section: {
-    fontSize: 12,
+  context: { marginBottom: spacing.lg },
+  contextLabel: {
+    fontSize: 11,
     fontWeight: "700",
     color: colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  contextName: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: colors.text,
+    marginTop: spacing.xs,
+  },
+  contextBranch: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+    marginTop: 2,
+  },
+  headline: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: colors.text,
     marginBottom: spacing.sm,
   },
-  second: { marginTop: spacing.md },
+  sub: {
+    fontSize: 14,
+    color: colors.textMuted,
+    lineHeight: 20,
+    marginBottom: spacing.lg,
+  },
   footer: { marginTop: "auto", paddingBottom: spacing.lg },
 });

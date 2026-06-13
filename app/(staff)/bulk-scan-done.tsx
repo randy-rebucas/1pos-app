@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Screen } from "@/components/ui/screen";
 import { colors, spacing, radius } from "@/lib/theme";
 
 export default function BulkScanDoneScreen() {
@@ -24,8 +24,7 @@ export default function BulkScanDoneScreen() {
   const successRate = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+    <Screen contentStyle={styles.container}>
         <View style={styles.iconWrap}>
           <Ionicons
             name={errors > 0 ? "warning" : "checkmark-circle"}
@@ -55,12 +54,11 @@ export default function BulkScanDoneScreen() {
         <TouchableOpacity
           style={styles.exitBtn}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onPress={() => router.replace("/(staff)" as any)}
+          onPress={() => router.replace("/(staff)" as never)}
         >
-          <Text style={styles.exitText}>Back to Admin</Text>
+          <Text style={styles.exitText}>Back to home</Text>
         </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -85,7 +83,6 @@ function StatCard({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
   container: {
     flex: 1,
     padding: spacing.lg,

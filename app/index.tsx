@@ -1,6 +1,6 @@
 import { Redirect } from "expo-router";
 
-/** Client app entry: customer booking (auth in `/(customer)/_layout`). Staff: `/(staff)`. */
+/** POS entry: staff store selection (auth in `/(staff)/_layout`). */
 export default function Index() {
-  return <Redirect href="/(customer)" />;
+  return <Redirect href="/(staff)/store-select" />;
 }

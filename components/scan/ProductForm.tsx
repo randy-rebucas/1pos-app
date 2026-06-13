@@ -2,14 +2,17 @@ import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  type TextInput as TextInputType,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { colors, spacing, radius } from "@/lib/theme";
 
 export interface ProductFormValues {
@@ -23,6 +26,10 @@ export interface ProductFormValues {
   notes: string;
 }
 
+export interface ProductFormHandle {
+  focusBarcode: () => void;
+}
+
 interface Category {
   _id: string;
   name: string;
@@ -34,144 +41,203 @@ interface ProductFormProps {
   categories: Category[];
   uploading?: boolean;
   onImageUpload?: (uri: string) => Promise<string>;
+  /** Changes when advancing products — refocuses barcode field. */
+  barcodeFocusKey?: string | number;
 }
 
-export function ProductForm({
-  values,
-  onChange,
-  categories,
-  uploading = false,
-  onImageUpload,
-}: ProductFormProps) {
-  async function pickImage() {
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images"],
-      quality: 0.8,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-    if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      onChange("imageUri", uri);
-      if (onImageUpload) {
-        const uploadedUrl = await onImageUpload(uri);
-        onChange("imageUri", uploadedUrl);
+export const ProductForm = forwardRef<ProductFormHandle, ProductFormProps>(
+  function ProductForm(
+    {
+      values,
+      onChange,
+      categories,
+      uploading = false,
+      onImageUpload,
+      barcodeFocusKey,
+    },
+    ref,
+  ) {
+    const barcodeRef = useRef<TextInputType>(null);
+
+    useImperativeHandle(ref, () => ({
+      focusBarcode: () => {
+        barcodeRef.current?.focus();
+      },
+    }));
+
+    useEffect(() => {
+      const timer = setTimeout(() => barcodeRef.current?.focus(), 150);
+      return () => clearTimeout(timer);
+    }, [barcodeFocusKey]);
+
+    async function pickImage() {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+      if (!result.canceled && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        onChange("imageUri", uri);
+        if (onImageUpload) {
+          try {
+            const uploadedUrl = await onImageUpload(uri);
+            onChange("imageUri", uploadedUrl);
+          } catch (e) {
+            onChange("imageUri", "");
+            Alert.alert(
+              "Upload failed",
+              e instanceof Error ? e.message : "Could not upload photo.",
+            );
+          }
+        }
       }
     }
-  }
 
-  return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Field label="Barcode / QR Code">
-        <TextInput
-          style={styles.input}
-          value={values.barcode}
-          onChangeText={(v) => onChange("barcode", v)}
-          placeholder="Scanned or manual entry"
-          placeholderTextColor={colors.textMuted}
-          autoCapitalize="none"
-        />
-      </Field>
-
-      <Field label="Product Title *">
-        <TextInput
-          style={styles.input}
-          value={values.name}
-          onChangeText={(v) => onChange("name", v)}
-          placeholder="Product name"
-          placeholderTextColor={colors.textMuted}
-        />
-      </Field>
-
-      <Field label="SKU">
-        <TextInput
-          style={styles.input}
-          value={values.sku}
-          onChangeText={(v) => onChange("sku", v)}
-          placeholder="Leave blank to auto-generate"
-          placeholderTextColor={colors.textMuted}
-          autoCapitalize="characters"
-        />
-      </Field>
-
-      <View style={styles.row}>
-        <View style={styles.half}>
-          <Field label="Price">
-            <TextInput
-              style={styles.input}
-              value={values.price}
-              onChangeText={(v) => onChange("price", v)}
-              placeholder="0.00"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="decimal-pad"
-            />
-          </Field>
-        </View>
-        <View style={styles.half}>
-          <Field label="Stock">
-            <TextInput
-              style={styles.input}
-              value={values.stock}
-              onChangeText={(v) => onChange("stock", v)}
-              placeholder="0"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="number-pad"
-            />
-          </Field>
-        </View>
-      </View>
-
-      {categories.length > 0 && (
-        <Field label="Category">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat._id}
-                style={[styles.catChip, values.categoryId === cat._id && styles.catChipActive]}
-                onPress={() => onChange("categoryId", cat._id)}
-              >
-                <Text style={[styles.catChipText, values.categoryId === cat._id && styles.catChipTextActive]}>
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+    return (
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Field label="Barcode / QR Code">
+          <TextInput
+            ref={barcodeRef}
+            style={styles.input}
+            value={values.barcode}
+            onChangeText={(v) => onChange("barcode", v)}
+            placeholder="Scanned or manual entry"
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoFocus
+            showSoftInputOnFocus={false}
+            returnKeyType="next"
+            selectTextOnFocus
+          />
         </Field>
-      )}
 
-      <Field label="Photo">
-        <TouchableOpacity style={styles.photoBtn} onPress={pickImage} disabled={uploading}>
-          {values.imageUri ? (
-            <Image source={{ uri: values.imageUri }} style={styles.preview} contentFit="cover" />
-          ) : (
-            <View style={styles.photoPlaceholder}>
-              {uploading ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
-                <>
-                  <Ionicons name="camera" size={28} color={colors.textMuted} />
-                  <Text style={styles.photoHint}>Take photo</Text>
-                </>
-              )}
-            </View>
-          )}
-        </TouchableOpacity>
-      </Field>
+        <Field label="Product Title *">
+          <TextInput
+            style={styles.input}
+            value={values.name}
+            onChangeText={(v) => onChange("name", v)}
+            placeholder="Product name"
+            placeholderTextColor={colors.textMuted}
+          />
+        </Field>
 
-      <Field label="Notes">
-        <TextInput
-          style={[styles.input, styles.multiline]}
-          value={values.notes}
-          onChangeText={(v) => onChange("notes", v)}
-          placeholder="Optional notes"
-          placeholderTextColor={colors.textMuted}
-          multiline
-          numberOfLines={3}
-        />
-      </Field>
-    </ScrollView>
-  );
-}
+        <Field label="SKU">
+          <TextInput
+            style={styles.input}
+            value={values.sku}
+            onChangeText={(v) => onChange("sku", v)}
+            placeholder="Leave blank to auto-generate"
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="characters"
+          />
+        </Field>
+
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <Field label="Price">
+              <TextInput
+                style={styles.input}
+                value={values.price}
+                onChangeText={(v) => onChange("price", v)}
+                placeholder="0.00"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="decimal-pad"
+              />
+            </Field>
+          </View>
+          <View style={styles.half}>
+            <Field label="Stock">
+              <TextInput
+                style={styles.input}
+                value={values.stock}
+                onChangeText={(v) => onChange("stock", v)}
+                placeholder="0"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="number-pad"
+              />
+            </Field>
+          </View>
+        </View>
+
+        {categories.length > 0 && (
+          <Field label="Category">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.catScroll}
+            >
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat._id}
+                  style={[
+                    styles.catChip,
+                    values.categoryId === cat._id && styles.catChipActive,
+                  ]}
+                  onPress={() => onChange("categoryId", cat._id)}
+                >
+                  <Text
+                    style={[
+                      styles.catChipText,
+                      values.categoryId === cat._id && styles.catChipTextActive,
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Field>
+        )}
+
+        <Field label="Photo">
+          <TouchableOpacity
+            style={styles.photoBtn}
+            onPress={pickImage}
+            disabled={uploading}
+          >
+            {values.imageUri ? (
+              <Image
+                source={{ uri: values.imageUri }}
+                style={styles.preview}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.photoPlaceholder}>
+                {uploading ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <>
+                    <Ionicons name="camera" size={28} color={colors.textMuted} />
+                    <Text style={styles.photoHint}>Take photo</Text>
+                  </>
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
+        </Field>
+
+        <Field label="Notes">
+          <TextInput
+            style={[styles.input, styles.multiline]}
+            value={values.notes}
+            onChangeText={(v) => onChange("notes", v)}
+            placeholder="Optional notes"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            numberOfLines={3}
+          />
+        </Field>
+      </ScrollView>
+    );
+  },
+);
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
