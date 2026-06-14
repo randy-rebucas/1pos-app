@@ -1,0 +1,36 @@
+{
+  "cli": {
+    "version": ">= 20.1.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://74ae-49-147-121-98.ngrok-free.app",
+        "EXPO_PUBLIC_API_PATH_PREFIX": "/api"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://74ae-49-147-121-98.ngrok-free.app",
+        "EXPO_PUBLIC_API_PATH_PREFIX": "/api"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.1pos.solutions",
+        "EXPO_PUBLIC_API_PATH_PREFIX": "/api"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
