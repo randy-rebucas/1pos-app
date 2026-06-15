@@ -1,10 +1,10 @@
-# Google Play Store listing — 1POS Mobile
+# Google Play Store listing — 1POS App
 
-Copy, assets, and compliance notes for publishing **1POS Mobile** on Google Play.
+Copy, assets, and compliance notes for publishing **1POS App** on Google Play.
 
 | Field            | Value                                           |
 | ---------------- | ----------------------------------------------- |
-| App name (store) | 1POS Mobile                                     |
+| App name (store) | 1POS App                                     |
 | Package name     | `com.app.onepos`                                |
 | Default category | **Business**                                    |
 | Production API   | `https://www.1pos.solutions`                    |
@@ -17,7 +17,7 @@ Copy, assets, and compliance notes for publishing **1POS Mobile** on Google Play
 ### App name (30 characters max)
 
 ```
-1POS Mobile
+1POS App
 ```
 
 ### Short description (80 characters max)
@@ -29,7 +29,7 @@ Staff companion for 1POS — scan barcodes, update products, and sync your store
 ### Full description (4,000 characters max)
 
 ```
-1POS Mobile is the official staff companion app for stores on the 1POS platform. Use it on the shop floor to scan barcodes and QR codes, update product details, and keep your catalog accurate — without returning to a desktop.
+1POS App is the official staff companion app for stores on the 1POS platform. Use it on the shop floor to scan barcodes and QR codes, update product details, and keep your catalog accurate — without returning to a desktop.
 
 WHO IT'S FOR
 • Store owners, managers, and staff with a 1POS account
@@ -55,7 +55,7 @@ REQUIREMENTS
 • Internet connection
 • Camera access for barcode/QR scanning and product photos
 
-1POS Mobile is a business tool for authorized staff only. It is not a consumer shopping app.
+1POS App is a business tool for authorized staff only. It is not a consumer shopping app.
 
 Support: support@1pos.solutions
 Website: https://www.1pos.solutions
@@ -76,7 +76,7 @@ Website: https://www.1pos.solutions
 ### Feature graphic — suggested layout
 
 - Background: brand blue `#0B6E99` or light `#F5F7FA`
-- Headline: **1POS Mobile**
+- Headline: **1POS App**
 - Subline: _Scan. Update. Sync._
 - Optional: phone mockup showing scanner + product form
 - No excessive text (Play may reject cluttered feature graphics)
@@ -134,7 +134,7 @@ Play requires instructions if login is needed to review the app.
 **Instructions for reviewers:**
 
 ```
-1POS Mobile requires an active 1POS store account.
+1POS App requires an active 1POS store account.
 
 Demo credentials (provide before submission):
   Email: [demo-admin@yourstore.com]

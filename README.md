@@ -1,4 +1,4 @@
-# 1POS Mobile
+# 1POS App
 
 Mobile POS companion for **retail stores and general businesses**. Built with [Expo](https://expo.dev) and [Expo Router](https://docs.expo.dev/router/introduction/).
 
