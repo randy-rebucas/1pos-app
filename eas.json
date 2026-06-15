@@ -18,7 +18,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://74ae-49-147-121-98.ngrok-free.app",
+        "EXPO_PUBLIC_API_URL": "https://www.1pos.solutions",
         "EXPO_PUBLIC_API_PATH_PREFIX": "/api"
       }
     },
