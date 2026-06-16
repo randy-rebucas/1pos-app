@@ -1,4 +1,4 @@
-import { Link, router } from "expo-router";
+import { Link } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { useStaffScan } from "@/lib/context/staff-scan-context";
 import { Card } from "@/components/ui/card";
@@ -11,7 +11,6 @@ export default function StaffHomeScreen() {
 
   async function handleChangeStore() {
     await resetStaffFlow();
-    router.replace("/(staff)/store-select");
   }
 
   return (

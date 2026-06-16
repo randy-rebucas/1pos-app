@@ -27,7 +27,6 @@ export default function BulkScanSelectScreen() {
     setChangingStore(true);
     try {
       await resetStaffFlow();
-      router.replace("/(staff)/store-select");
     } finally {
       setChangingStore(false);
     }
