@@ -72,6 +72,12 @@ async function parseJsonBody(res: Response): Promise<unknown> {
   const text = await res.text();
   if (!text) return null;
   const ct = res.headers.get("content-type") ?? "";
+  if (ct.includes("text/html") || text.trimStart().startsWith("<")) {
+    throw new ApiError(
+      `API returned an HTML page — check EXPO_PUBLIC_API_URL in .env (got ${res.status} from ${res.url})`,
+      502,
+    );
+  }
   if (ct.includes("application/json")) {
     try {
       return JSON.parse(text) as unknown;
@@ -83,7 +89,7 @@ async function parseJsonBody(res: Response): Promise<unknown> {
     return JSON.parse(text) as unknown;
   } catch {
     throw new ApiError(
-      text.slice(0, 120) || "Non-JSON response (expected API JSON)",
+      "Non-JSON response from server — check EXPO_PUBLIC_API_URL in .env",
       502,
     );
   }
