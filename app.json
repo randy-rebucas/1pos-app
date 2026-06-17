@@ -3,7 +3,6 @@
     "name": "1POS App",
     "slug": "1pos-companion",
     "version": "1.0.2",
-    "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "oneposapp",
     "userInterfaceStyle": "automatic",
