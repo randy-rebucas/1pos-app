@@ -58,6 +58,27 @@ export type FetchJsonOptions = RequestInit & {
   public?: boolean;
 };
 
+const REQUEST_TIMEOUT_MS = 15000;
+
+/** Runs fetch with a timeout, turning network/abort failures into a friendly ApiError. */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new ApiError("Request timed out. Check your connection and try again.", 0);
+    }
+    throw new ApiError("Network error — check your connection and try again.", 0);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function errorMessage(body: unknown, fallback: string): string {
   if (typeof body === "string" && body.trim()) return body;
   if (body && typeof body === "object") {
@@ -122,7 +143,7 @@ export async function fetchJson<T>(
   const { public: isPublic, headers, method, body, ...rest } = init ?? {};
   const url = apiUrl(path);
   const hasBody = body != null && method !== "GET" && method !== "HEAD";
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method,
     body,
     ...rest,
@@ -145,7 +166,7 @@ export async function uploadFormData<T>(
     throw new ApiError("Set EXPO_PUBLIC_API_URL in .env.", 503);
   }
   const url = apiUrl(path);
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: "POST",
     headers: { ...buildDefaultHeaders(), ...headers },
     body: formData,
