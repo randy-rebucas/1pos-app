@@ -17,12 +17,6 @@ export const API_CONFIG = {
 export const MOBILE_API_KEY =
   process.env.EXPO_PUBLIC_MOBILE_API_KEY?.trim() || "";
 
-export const API_PATH_PREFIX = (
-  process.env.EXPO_PUBLIC_API_PATH_PREFIX ?? "/api"
-)
-  .trim()
-  .replace(/\/+$/, "");
-
 /** True when `EXPO_PUBLIC_API_URL` is set — all data loads use HTTP only. */
 export function isApiConfigured(): boolean {
   return Boolean(API_CONFIG.baseUrl?.trim());

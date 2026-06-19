@@ -25,8 +25,6 @@ API reference: [`mobile-api-endpoints.md`](./mobile-api-endpoints.md)
 
    ```bash
    EXPO_PUBLIC_API_URL=http://localhost:3000
-   # Optional — defaults to /api
-   # EXPO_PUBLIC_API_PATH_PREFIX=/api
    ```
 
 3. Start: `npm start`

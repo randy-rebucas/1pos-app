@@ -8,8 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://www.1pos.solutions",
-        "EXPO_PUBLIC_API_PATH_PREFIX": "api"
+        "EXPO_PUBLIC_API_URL": "https://www.1pos.solutions"
       }
     },
     "preview": {
@@ -18,15 +17,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://www.1pos.solutions",
-        "EXPO_PUBLIC_API_PATH_PREFIX": "api"
+        "EXPO_PUBLIC_API_URL": "https://www.1pos.solutions"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://www.1pos.solutions",
-        "EXPO_PUBLIC_API_PATH_PREFIX": "api"
+        "EXPO_PUBLIC_API_URL": "https://www.1pos.solutions"
       }
     }
   },

@@ -49,7 +49,7 @@ npm run android      # eas build profile=development equivalent, run locally
 npm run ios
 ```
 
-Local runs read `.env` (`EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_API_PATH_PREFIX`) instead of the `eas.json` build profile env.
+Local runs read `.env` (`EXPO_PUBLIC_API_URL`) instead of the `eas.json` build profile env.
 
 ## Web
 

@@ -1,19 +1,11 @@
-import {
-  API_CONFIG,
-  API_PATH_PREFIX,
-  MOBILE_API_KEY,
-  isApiConfigured,
-} from "@/lib/api/env";
+import { API_CONFIG, MOBILE_API_KEY, isApiConfigured } from "@/lib/api/env";
 import { notifyUnauthorized } from "@/lib/api/auth-events";
 
 export { API_CONFIG } from "@/lib/api/env";
 
 export function apiUrl(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  const prefix = API_PATH_PREFIX.startsWith("/")
-    ? API_PATH_PREFIX
-    : `/${API_PATH_PREFIX}`;
-  return `${API_CONFIG.baseUrl}${prefix}${p}`;
+  return `${API_CONFIG.baseUrl}/api${p}`;
 }
 
 export class ApiError extends Error {
